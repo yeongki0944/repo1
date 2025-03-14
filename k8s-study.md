@@ -11,6 +11,9 @@
 EC2에 Kubernetes 클러스터를 구축합니다.
 참고: https://bydawn25.tistory.com/78
 
+## Next 목표
+NLB, MetalLB 등으로 ingress controller 구성하기
+
 ## 사전 준비
 ### VPC 구성
 ### EC2 인스턴스 생성
