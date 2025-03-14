@@ -113,3 +113,31 @@ kubeadm, kubelet, kubectl을 설치하고 버전을 고정합니다.
 ```bash
 sudo curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list && sudo apt-get update && sudo apt-get install -y kubelet kubeadm kubectl && sudo apt-mark hold kubelet kubeadm kubectl
 ```
+
+
+
+---
+
+마스터 노드 작업
+sudo kubeadm init --control-plane-endpoint=k8smaster --apiserver-advertise-address=10.0.9.19 --pod-network-cidr=10.244.0.0/16
+
+echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >> ~/.bashrc
+source ~/.bashrc
+
+
+워커노드 작업
+echo "10.0.9.19 k8smaster" | sudo tee -a /etc/hosts
+
+
+sudo kubeadm join k8smaster:6443 --token vd1ppv.2g3q2tm6nxfmsnir \
+        --discovery-token-ca-cert-hash sha256:c5a0aa585806ba0a36d61b34b4881aeecdddf3e451570878045de01827333a25
+
+
+---------
+
+네트워크 설정
+
+마스터노드 
+
+wget https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+kubectl apply -f kube-flannel.yml
