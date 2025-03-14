@@ -187,3 +187,111 @@ http://<워커노드_퍼블릭IP>:32717
 ```
 
 > 주의: EC2 보안 그룹에서 해당 포트(32717)에 대한 인바운드 트래픽을 허용해야 합니다.
+
+
+
+
+# Kubernetes 마스터 노드 설치 로그 분석
+
+## 전체 설치 로그
+
+```bash
+root@k8s-master:~# sudo kubeadm init --control-plane-endpoint=k8smaster --apiserver-advertise-address=10.0.9.19 --pod-network-cidr=10.244.0.0/16
+
+I0314 13:17:06.825986    6720 version.go:256] remote version is much newer: v1.32.3; falling back to: stable-1.28
+[init] Using Kubernetes version: v1.28.15
+[preflight] Running pre-flight checks
+[preflight] Pulling images required for setting up a Kubernetes cluster
+[preflight] This might take a minute or two, depending on the speed of your internet connection
+[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+W0314 13:17:07.329350    6720 checks.go:835] detected that the sandbox image "registry.k8s.io/pause:3.6" of the container runtime is inconsistent with that used by kubeadm. It is recommended that using "registry.k8s.io/pause:3.9" as the CRI sandbox image.
+...
+```
+
+## 쿠버네티스 마스터 노드 설치 가이드
+
+### 1. 설치 개요
+
+이 가이드는 Kubernetes 클러스터의 마스터 노드를 `kubeadm`을 사용하여 초기화하는 과정을 설명합니다. 주요 목적은 클러스터의 중앙 제어 지점을 설정하는 것입니다.
+
+### 2. 초기화 명령어 상세 설명
+
+```bash
+sudo kubeadm init \
+  --control-plane-endpoint=k8smaster \
+  --apiserver-advertise-address=10.0.9.19 \
+  --pod-network-cidr=10.244.0.0/16
+```
+
+- `--control-plane-endpoint`: 클러스터의 엔드포인트 주소를 지정합니다. 여기서는 `k8smaster`로 설정되었습니다.
+- `--apiserver-advertise-address`: API 서버의 광고 주소로, 10.0.9.19로 구성되었습니다.
+- `--pod-network-cidr`: Pod의 네트워크 대역을 10.244.0.0/16으로 설정합니다.
+
+### 3. 주요 초기화 단계
+
+1. **사전 점검 (Preflight Checks)**: 
+   - 시스템 요구 사항 확인
+   - 필요한 이미지 다운로드
+   - 호환성 검사 수행
+
+2. **인증서 생성 (Certificate Generation)**: 
+   - CA 인증서
+   - API 서버 인증서
+   - etcd 인증서 등 생성
+
+3. **구성 파일 생성 (Kubeconfig Files)**:
+   - admin.conf
+   - kubelet.conf
+   - controller-manager.conf
+   - scheduler.conf 등 생성
+
+4. **컨트롤 플레인 구성 요소 설정**:
+   - kube-apiserver
+   - kube-controller-manager
+   - kube-scheduler 정적 Pod 매니페스트 생성
+
+5. **애드온 설치**:
+   - CoreDNS
+   - kube-proxy 설치
+
+### 4. 클러스터 노드 추가 방법
+
+#### 컨트롤 플레인 노드 추가
+```bash
+kubeadm join k8smaster:6443 \
+  --token vd1ppv.2g3q2tm6nxfmsnir \
+  --discovery-token-ca-cert-hash sha256:c5a0aa585806ba0a36d61b34b4881aeecdddf3e451570878045de01827333a25 \
+  --control-plane
+```
+
+#### 워커 노드 추가
+```bash
+kubeadm join k8smaster:6443 \
+  --token vd1ppv.2g3q2tm6nxfmsnir \
+  --discovery-token-ca-cert-hash sha256:c5a0aa585806ba0a36d61b34b4881aeecdddf3e451570878045de01827333a25
+```
+
+### 5. 주의사항 및 권장사항
+
+- Pod 네트워크 애드온을 반드시 설치해야 합니다.
+- 컨테이너 런타임의 샌드박스 이미지는 `registry.k8s.io/pause:3.9` 버전 사용을 권장합니다.
+- 보안을 위해 토큰과 인증서 해시는 주기적으로 갱신하는 것이 좋습니다.
+
+### 6. 사용자 환경 설정
+
+#### 일반 사용자 kubectl 설정
+```bash
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
+### 7. 추가 참고 사항
+
+- 공식 Kubernetes 문서: https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/
+- Pod 네트워크 애드온 선택: https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+### 8. 문제 해결
+
+- 클러스터 초기화 중 문제 발생 시 `kubeadm reset` 명령어로 초기화 상태를 초기화할 수 있습니다.
+- 로그는 `/var/log/kubernetes/` 디렉토리에서 확인 가능합니다.
